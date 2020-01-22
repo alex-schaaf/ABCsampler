@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Iterable
-
+import tqdm
 import scipy.stats
 
 
@@ -53,8 +53,38 @@ class REJ(Sampler):
     def __init__(self, model:ABCModel, observed:Iterable):
         super().__init__(model, observed)
 
-    def sample(self, n_sample:int, threshold:float):
-        pass
+    def sample(
+            self, 
+            n_samples:int, 
+            threshold:float,
+            iter_max:int=None
+        ):
+        n_iter, n_accepted = 0, 0
+        accepted_samples = {
+                name:[] for name in self.model.priors[0].keys()
+            }
+
+        pbar = tqdm.tqdm(total=n_samples)
+        while n_accepted < n_samples:
+            # sample from current priors
+            samples = self.draw(self.model.priors[0])
+            # simulate
+            sim = self.model.simulator(samples)
+            # summary statistics
+            s = self.model.summary(sim)
+            # distance
+            d = self.model.distance(s, self.observed)
+            # acceptance criteria
+            if d < threshold:
+                n_accepted += 1
+                self.append_samples(samples, accepted_samples)
+                pbar.update(1)
+            n_iter += 1
+        
+        # store accepted samples for epoch
+        self.outputs.append(accepted_samples)
+        # store acceptance rate for epoch
+        self.acceptance_rates.append(n_accepted / n_iter)
 
 
 class SMC(Sampler):
@@ -70,12 +100,16 @@ class SMC(Sampler):
             iter_max:int=None
         ):
         for n_epoch, threshold in enumerate(thresholds):
+            
+            print(f"Beginning epoch: {n_epoch + 1}")
             # initialize epoch
             n_iter, n_accepted = 0, 0
             accepted_samples = {
                 name:[] for name in self.model.priors[n_epoch].keys()
             }
-            while n_accepted < n_samples or n_iter == iter_max:
+
+            pbar = tqdm.tqdm(total=n_samples)
+            while n_accepted < n_samples:
                 # sample from current priors
                 samples = self.draw(self.model.priors[n_epoch])
                 # simulate
@@ -88,7 +122,9 @@ class SMC(Sampler):
                 if d < threshold:
                     n_accepted += 1
                     self.append_samples(samples, accepted_samples)
+                    pbar.update(1)
                 n_iter += 1
+            del pbar
             
             # store accepted samples for epoch
             self.outputs.append(accepted_samples)
