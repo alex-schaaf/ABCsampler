@@ -7,7 +7,7 @@ where sampling speed doesn't really matter.
 ## How to use
 
 ### Model construction
-```
+```py
 from abcsamplers import ABCModel
 
 def simulator(prior_sample):
@@ -29,7 +29,7 @@ model = abcsamplers.ABCModel(priors, simulator, summary, distance
 ```
 
 ### Rejection sampling
-```
+```py
 from abcsamplers import REJ
 
 observed = [4]
@@ -38,7 +38,7 @@ rej.sample(1000, threshold=0.1)
 ```
 
 ### Sequential Monte Carlo sampling
-```
+```py
 from abcsamplers import SMC
 
 observed = [4]
